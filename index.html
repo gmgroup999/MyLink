@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เว็บรวมลิงค์ของฉัน</title>
+    <!-- Tailwind CSS CDN for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons (optional, but good for edit icon) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- SheetJS (xlsx) for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .link-card-wrapper {
+            position: relative; /* For positioning the edit button */
+            display: flex;
+            align-items: center;
+            gap: 1rem; /* Space between link and edit button */
+        }
+        .link-card {
+            flex-grow: 1; /* Allow link card to take available space */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .link-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box; /* Ensures padding doesn't affect total width */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl text-center">
+        <!-- Profile Section -->
+        <div class="mb-8">
+            <img src="https://placehold.co/120x120/a78bfa/ffffff?text=Profile" alt="รูปโปรไฟล์" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-purple-400 shadow-md">
+            <h1 class="text-4xl font-extrabold text-gray-800 mb-2">((ZURAPONX))</h1>
+            <p class="text-lg text-gray-600">รวบรวมลิงค์</p>
+        </div>
+
+        <!-- Links Container -->
+        <div id="links-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Links will be injected here by JavaScript -->
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+            <button id="add-link-button" class="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+                เพิ่มลิงค์ใหม่
+            </button>
+            <button id="export-button" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+                <i class="fas fa-file-excel mr-2"></i>Export เป็น Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Add/Edit Link Modal -->
+    <div id="link-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title" class="text-2xl font-bold mb-6 text-gray-800">เพิ่มลิงค์ใหม่</h2>
+            <input type="text" id="link-title" class="link-input" placeholder="ชื่อลิงค์ (เช่น: Instagram, เว็บไซต์ส่วนตัว)">
+            <input type="url" id="link-url" class="link-input" placeholder="URL ของลิงค์ (เช่น: https://www.instagram.com/yourname)">
+            <button id="save-link-button" onclick="saveLink()" class="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+                บันทึกลิงค์
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Array to store link data
+        // You can pre-fill this array with your existing links
+        let links = [
+            { title: "Instagram ของฉัน", url: "https://www.instagram.com/your_instagram", icon: "fab fa-instagram" },
+            { title: "เว็บไซต์ส่วนตัว", url: "https://www.yourwebsite.com", icon: "fas fa-globe" },
+            { title: "ช่อง YouTube", url: "https://www.youtube.com/your_channel", icon: "fab fa-youtube" },
+            { title: "ติดต่อทาง Line", url: "https://line.me/ti/p/@your_line_id", icon: "fab fa-line" },
+            { title: "อีเมลของฉัน", url: "mailto:your.email@example.com", icon: "fas fa-envelope" }
+        ];
+
+        const linksContainer = document.getElementById('links-container');
+        const addLinkButton = document.getElementById('add-link-button');
+        const exportButton = document.getElementById('export-button'); // Get the new export button
+        const linkModal = document.getElementById('link-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const linkTitleInput = document.getElementById('link-title');
+        const linkUrlInput = document.getElementById('link-url');
+        const saveLinkButton = document.getElementById('save-link-button');
+
+        let currentEditIndex = -1; // -1 means adding new link, otherwise it's the index of the link being edited
+
+        // Function to render links on the page
+        function renderLinks() {
+            linksContainer.innerHTML = ''; // Clear existing links
+            links.forEach((link, index) => {
+                const linkWrapper = document.createElement('div');
+                linkWrapper.className = 'link-card-wrapper';
+
+                const linkCard = document.createElement('a');
+                linkCard.href = link.url;
+                linkCard.target = "_blank"; // Open link in a new tab
+                linkCard.rel = "noopener noreferrer"; // Security best practice for target="_blank"
+                linkCard.className = `
+                    link-card
+                    bg-gradient-to-r from-purple-500 to-indigo-600
+                    text-white
+                    py-4 px-6
+                    rounded-lg
+                    shadow-md
+                    flex items-center justify-center
+                    text-lg font-semibold
+                    hover:from-purple-600 hover:to-indigo-700
+                    focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75
+                    transition duration-300 ease-in-out
+                `;
+                linkCard.innerHTML = `
+                    <span>${link.title}</span>
+                `;
+
+                const editButton = document.createElement('button');
+                editButton.className = `
+                    px-4 py-3 bg-blue-500 text-white rounded-lg shadow-md
+                    hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75
+                    transition duration-300 ease-in-out
+                `;
+                editButton.innerHTML = `<i class="fas fa-edit"></i>`; // Font Awesome icon
+                editButton.onclick = (event) => {
+                    event.preventDefault(); // Prevent the link from being followed
+                    openModal(index); // Open modal in edit mode
+                };
+
+                linkWrapper.appendChild(linkCard);
+                linkWrapper.appendChild(editButton);
+                linksContainer.appendChild(linkWrapper);
+            });
+        }
+
+        // Function to open the modal (for add or edit)
+        function openModal(index = -1) { // Default index is -1 for adding new
+            linkModal.classList.remove('hidden');
+            linkModal.classList.add('flex'); // Use flex to center the modal content
+
+            currentEditIndex = index;
+
+            if (index === -1) { // Add mode
+                modalTitle.textContent = 'เพิ่มลิงค์ใหม่';
+                linkTitleInput.value = '';
+                linkUrlInput.value = '';
+                saveLinkButton.textContent = 'บันทึกลิงค์';
+                saveLinkButton.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500');
+                saveLinkButton.classList.add('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500');
+            } else { // Edit mode
+                modalTitle.textContent = 'แก้ไขลิงค์';
+                linkTitleInput.value = links[index].title;
+                linkUrlInput.value = links[index].url;
+                saveLinkButton.textContent = 'อัปเดตลิงค์';
+                saveLinkButton.classList.remove('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500');
+                saveLinkButton.classList.add('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500');
+            }
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            linkModal.classList.add('hidden');
+            linkModal.classList.remove('flex');
+            // Clear input fields and reset currentEditIndex
+            linkTitleInput.value = '';
+            linkUrlInput.value = '';
+            currentEditIndex = -1;
+        }
+
+        // Function to save (add or update) a link
+        function saveLink() {
+            const title = linkTitleInput.value.trim();
+            let url = linkUrlInput.value.trim();
+
+            if (title && url) {
+                // Prepend 'https://' if the URL doesn't start with http(s)://
+                if (!/^https?:\/\//i.test(url)) {
+                    url = 'https://' + url;
+                }
+
+                if (currentEditIndex === -1) { // Add new link
+                    links.push({ title: title, url: url, icon: "fas fa-link" }); // Default icon for new links
+                } else { // Update existing link
+                    links[currentEditIndex].title = title;
+                    links[currentEditIndex].url = url;
+                    // Icon is not updated in edit mode for simplicity, but could be added
+                }
+
+                renderLinks(); // Re-render all links
+                closeModal(); // Close the modal
+            } else {
+                // Simple message box instead of alert()
+                const messageBox = document.createElement('div');
+                messageBox.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                messageBox.textContent = 'กรุณากรอกชื่อและ URL ของลิงค์ให้ครบถ้วน';
+                document.body.appendChild(messageBox);
+                setTimeout(() => {
+                    messageBox.remove();
+                }, 3000); // Remove message after 3 seconds
+            }
+        }
+
+        // Function to export data to XLSX
+        function exportToXLSX() {
+            if (links.length === 0) {
+                const messageBox = document.createElement('div');
+                messageBox.className = 'fixed bottom-4 right-4 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                messageBox.textContent = 'ไม่มีข้อมูลลิงค์ให้ Export';
+                document.body.appendChild(messageBox);
+                setTimeout(() => {
+                    messageBox.remove();
+                }, 3000);
+                return;
+            }
+
+            // Prepare data for export
+            const dataToExport = links.map(link => ({
+                'ชื่อลิงค์': link.title,
+                'URL': link.url
+            }));
+
+            // Create a new workbook
+            const wb = XLSX.utils.book_new();
+            // Convert JSON array to worksheet
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            // Add the worksheet to the workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Link Data");
+
+            // Write and download the file
+            XLSX.writeFile(wb, "MyLinks.xlsx");
+        }
+
+        // Event listener for the "Add Link" button
+        addLinkButton.addEventListener('click', () => openModal(-1)); // Call openModal with -1 for add mode
+
+        // Event listener for the "Export" button
+        exportButton.addEventListener('click', exportToXLSX);
+
+        // Close modal if user clicks outside the modal content
+        window.addEventListener('click', (event) => {
+            if (event.target === linkModal) {
+                closeModal();
+            }
+        });
+
+        // Initial render of links when the page loads
+        document.addEventListener('DOMContentLoaded', renderLinks);
+    </script>
+</body>
+</html>
