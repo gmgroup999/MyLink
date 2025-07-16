@@ -78,6 +78,23 @@
             border-radius: 8px;
             box-sizing: border-box; /* Ensures padding doesn't affect total width */
         }
+        /* Message box for notifications */
+        .message-box {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 50;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .message-box.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -121,18 +138,12 @@
 
     <script>
         // Array to store link data
-        // You can pre-fill this array with your existing links
-        let links = [
-            { title: "Instagram ของฉัน", url: "https://www.instagram.com/your_instagram", icon: "fab fa-instagram" },
-            { title: "เว็บไซต์ส่วนตัว", url: "https://www.yourwebsite.com", icon: "fas fa-globe" },
-            { title: "ช่อง YouTube", url: "https://www.youtube.com/your_channel", icon: "fab fa-youtube" },
-            { title: "ติดต่อทาง Line", url: "https://line.me/ti/p/@your_line_id", icon: "fab fa-line" },
-            { title: "อีเมลของฉัน", url: "mailto:your.email@example.com", icon: "fas fa-envelope" }
-        ];
+        // This array will be initialized from localStorage or with default values
+        let links = [];
 
         const linksContainer = document.getElementById('links-container');
         const addLinkButton = document.getElementById('add-link-button');
-        const exportButton = document.getElementById('export-button'); // Get the new export button
+        const exportButton = document.getElementById('export-button');
         const linkModal = document.getElementById('link-modal');
         const modalTitle = document.getElementById('modal-title');
         const linkTitleInput = document.getElementById('link-title');
@@ -140,6 +151,76 @@
         const saveLinkButton = document.getElementById('save-link-button');
 
         let currentEditIndex = -1; // -1 means adding new link, otherwise it's the index of the link being edited
+
+        // Function to display a temporary message
+        function showMessage(message, type = 'info') {
+            let messageBox = document.getElementById('app-message-box');
+            if (!messageBox) {
+                messageBox = document.createElement('div');
+                messageBox.id = 'app-message-box';
+                messageBox.className = 'message-box';
+                document.body.appendChild(messageBox);
+            }
+
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show'; // Reset classes and add show
+
+            // Set background color based on type
+            if (type === 'success') {
+                messageBox.style.backgroundColor = '#4CAF50'; // Green
+            } else if (type === 'error') {
+                messageBox.style.backgroundColor = '#f44336'; // Red
+            } else if (type === 'warning') {
+                messageBox.style.backgroundColor = '#ff9800'; // Orange
+            } else {
+                messageBox.style.backgroundColor = '#2196F3'; // Blue (info)
+            }
+
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000); // Hide message after 3 seconds
+        }
+
+        // Function to save links to localStorage
+        function saveLinksToLocalStorage() {
+            try {
+                localStorage.setItem('myLinksData', JSON.stringify(links));
+                showMessage('บันทึกข้อมูลแล้ว!', 'success');
+            } catch (e) {
+                console.error("Error saving to localStorage:", e);
+                showMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+            }
+        }
+
+        // Function to load links from localStorage
+        function loadLinksFromLocalStorage() {
+            try {
+                const storedLinks = localStorage.getItem('myLinksData');
+                if (storedLinks) {
+                    links = JSON.parse(storedLinks);
+                } else {
+                    // Default links if nothing in localStorage
+                    links = [
+                        { title: "Instagram ของฉัน", url: "https://www.instagram.com/your_instagram", icon: "fab fa-instagram" },
+                        { title: "เว็บไซต์ส่วนตัว", url: "https://www.yourwebsite.com", icon: "fas fa-globe" },
+                        { title: "ช่อง YouTube", url: "https://www.youtube.com/your_channel", icon: "fab fa-youtube" },
+                        { title: "ติดต่อทาง Line", url: "https://line.me/ti/p/@your_line_id", icon: "fab fa-line" },
+                        { title: "อีเมลของฉัน", url: "mailto:your.email@example.com", icon: "fas fa-envelope" }
+                    ];
+                }
+            } catch (e) {
+                console.error("Error loading from localStorage:", e);
+                showMessage('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+                // Fallback to default links if parsing fails
+                links = [
+                    { title: "Instagram ของฉัน", url: "https://www.instagram.com/your_instagram", icon: "fab fa-instagram" },
+                    { title: "เว็บไซต์ส่วนตัว", url: "https://www.yourwebsite.com", icon: "fas fa-globe" },
+                    { title: "ช่อง YouTube", url: "https://www.youtube.com/your_channel", icon: "fab fa-youtube" },
+                    { title: "ติดต่อทาง Line", url: "https://line.me/ti/p/@your_line_id", icon: "fab fa-line" },
+                    { title: "อีเมลของฉัน", url: "mailto:your.email@example.com", icon: "fas fa-envelope" }
+                ];
+            }
+        }
 
         // Function to render links on the page
         function renderLinks() {
@@ -241,29 +322,17 @@
                 }
 
                 renderLinks(); // Re-render all links
+                saveLinksToLocalStorage(); // Save changes to localStorage
                 closeModal(); // Close the modal
             } else {
-                // Simple message box instead of alert()
-                const messageBox = document.createElement('div');
-                messageBox.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-                messageBox.textContent = 'กรุณากรอกชื่อและ URL ของลิงค์ให้ครบถ้วน';
-                document.body.appendChild(messageBox);
-                setTimeout(() => {
-                    messageBox.remove();
-                }, 3000); // Remove message after 3 seconds
+                showMessage('กรุณากรอกชื่อและ URL ของลิงค์ให้ครบถ้วน', 'error');
             }
         }
 
         // Function to export data to XLSX
         function exportToXLSX() {
             if (links.length === 0) {
-                const messageBox = document.createElement('div');
-                messageBox.className = 'fixed bottom-4 right-4 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-                messageBox.textContent = 'ไม่มีข้อมูลลิงค์ให้ Export';
-                document.body.appendChild(messageBox);
-                setTimeout(() => {
-                    messageBox.remove();
-                }, 3000);
+                showMessage('ไม่มีข้อมูลลิงค์ให้ Export', 'warning');
                 return;
             }
 
@@ -282,6 +351,7 @@
 
             // Write and download the file
             XLSX.writeFile(wb, "MyLinks.xlsx");
+            showMessage('Export ข้อมูลเป็น Excel แล้ว!', 'success');
         }
 
         // Event listener for the "Add Link" button
@@ -297,8 +367,11 @@
             }
         });
 
-        // Initial render of links when the page loads
-        document.addEventListener('DOMContentLoaded', renderLinks);
+        // Initial load and render of links when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLinksFromLocalStorage(); // Load data first
+            renderLinks(); // Then render the loaded data
+        });
     </script>
 </body>
 </html>
