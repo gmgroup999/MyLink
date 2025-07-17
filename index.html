@@ -15,7 +15,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Light gray background */
+            background-color: #eff6ff; /* Light blue background for cool tone */
         }
         .link-card-wrapper {
             position: relative; /* For positioning the edit button */
@@ -97,24 +97,24 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-blue-50 flex items-center justify-center min-h-screen p-4">
 
     <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl text-center">
         <!-- Profile Section -->
         <div class="mb-8">
-            <img src="https://placehold.co/120x120/a78bfa/ffffff?text=Profile" alt="Profile Picture" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-purple-400 shadow-md">
+            <img src="https://placehold.co/120x120/a78bfa/ffffff?text=MyLink" alt="MyLink Picture" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-blue-300 shadow-md">
             <h1 class="text-4xl font-extrabold text-gray-800 mb-2">((ZURAPONX))</h1>
-            <p class="text-lg text-gray-600">รวบรวมลิงค์</p>
+            <!-- Removed the description text for minimalism -->
         </div>
 
         <!-- Links Container -->
-        <div id="links-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="links-container" class="grid grid-cols-1 gap-4">
             <!-- Links will be injected here by JavaScript -->
         </div>
 
         <!-- Action Buttons -->
         <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-            <button id="add-link-button" class="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+            <button id="add-link-button" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
                 เพิ่มลิงค์ใหม่
             </button>
             <button id="export-button" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
@@ -140,6 +140,23 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="confirm-delete-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeDeleteConfirmModal()">&times;</span>
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">ยืนยันการลบ</h2>
+            <p class="text-lg text-gray-700 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบลิงค์ "<span id="delete-link-title" class="font-semibold"></span>" นี้?</p>
+            <div class="flex justify-end gap-4">
+                <button onclick="closeDeleteConfirmModal()" class="px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+                    ยกเลิก
+                </button>
+                <button onclick="confirmDelete()" class="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+                    ลบ
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Array to store link data
         // This array will be initialized from localStorage or with default values
@@ -156,7 +173,11 @@
         const linkUrlInput = document.getElementById('link-url');
         const saveLinkButton = document.getElementById('save-link-button');
 
+        const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+        const deleteLinkTitleSpan = document.getElementById('delete-link-title');
+
         let currentEditIndex = -1; // -1 means adding new link, otherwise it's the index of the link being edited
+        let linkToDeleteIndex = -1; // Stores the index of the link to be deleted
 
         // Function to display a temporary message
         function showMessage(message, type = 'info') {
@@ -241,15 +262,15 @@
                 linkCard.rel = "noopener noreferrer"; // Security best practice for target="_blank"
                 linkCard.className = `
                     link-card
-                    bg-gradient-to-r from-purple-500 to-indigo-600
+                    bg-gradient-to-r from-blue-400 to-cyan-500 /* Cool tone gradient */
                     text-white
                     py-4 px-6
                     rounded-lg
                     shadow-md
                     flex items-center justify-center
                     text-lg font-semibold
-                    hover:from-purple-600 hover:to-indigo-700
-                    focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75
+                    hover:from-blue-500 hover:to-cyan-600 /* Darker hover */
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75
                     transition duration-300 ease-in-out
                 `;
                 linkCard.innerHTML = `
@@ -258,8 +279,8 @@
 
                 const editButton = document.createElement('button');
                 editButton.className = `
-                    px-4 py-3 bg-blue-500 text-white rounded-lg shadow-md
-                    hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75
+                    px-4 py-3 bg-sky-500 text-white rounded-lg shadow-md /* Sky blue for edit */
+                    hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75
                     transition duration-300 ease-in-out
                 `;
                 editButton.innerHTML = `<i class="fas fa-edit"></i>`; // Font Awesome icon
@@ -268,8 +289,22 @@
                     openModal(index); // Open modal in edit mode
                 };
 
+                const deleteButton = document.createElement('button');
+                deleteButton.className = `
+                    px-4 py-3 bg-red-500 text-white rounded-lg shadow-md
+                    hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75
+                    transition duration-300 ease-in-out
+                `;
+                deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`; // Font Awesome trash icon
+                deleteButton.onclick = (event) => {
+                    event.preventDefault(); // Prevent the link from being followed
+                    openDeleteConfirmModal(index); // Open delete confirmation modal
+                };
+
+
                 linkWrapper.appendChild(linkCard);
                 linkWrapper.appendChild(editButton);
+                linkWrapper.appendChild(deleteButton); // Add delete button
                 linksContainer.appendChild(linkWrapper);
             });
         }
@@ -286,19 +321,19 @@
                 linkTitleInput.value = '';
                 linkUrlInput.value = '';
                 saveLinkButton.textContent = 'บันทึกลิงค์';
-                saveLinkButton.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500');
+                saveLinkButton.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500'); /* Ensure green for new */
                 saveLinkButton.classList.add('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500');
             } else { // Edit mode
                 modalTitle.textContent = 'แก้ไขลิงค์';
                 linkTitleInput.value = links[index].title;
                 linkUrlInput.value = links[index].url;
                 saveLinkButton.textContent = 'อัปเดตลิงค์';
-                saveLinkButton.classList.remove('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500');
+                saveLinkButton.classList.remove('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500'); /* Ensure blue for update */
                 saveLinkButton.classList.add('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500');
             }
         }
 
-        // Function to close the modal
+        // Function to close the main link modal
         function closeModal() {
             linkModal.classList.add('hidden');
             linkModal.classList.remove('flex');
@@ -407,6 +442,32 @@
             reader.readAsArrayBuffer(file);
         }
 
+        // Function to open the delete confirmation modal
+        function openDeleteConfirmModal(index) {
+            linkToDeleteIndex = index;
+            deleteLinkTitleSpan.textContent = links[index].title;
+            confirmDeleteModal.classList.remove('hidden');
+            confirmDeleteModal.classList.add('flex');
+        }
+
+        // Function to close the delete confirmation modal
+        function closeDeleteConfirmModal() {
+            confirmDeleteModal.classList.add('hidden');
+            confirmDeleteModal.classList.remove('flex');
+            linkToDeleteIndex = -1; // Reset the index
+        }
+
+        // Function to perform the actual delete after confirmation
+        function confirmDelete() {
+            if (linkToDeleteIndex !== -1) {
+                links.splice(linkToDeleteIndex, 1); // Remove the link from the array
+                renderLinks(); // Re-render the links on the page
+                saveLinksToLocalStorage(); // Save changes to localStorage
+                showMessage('ลบลิงค์สำเร็จแล้ว!', 'success');
+            }
+            closeDeleteConfirmModal(); // Close the confirmation modal
+        }
+
 
         // Event listener for the "Add Link" button
         addLinkButton.addEventListener('click', () => openModal(-1));
@@ -422,10 +483,14 @@
         // Event listener for when a file is selected in the hidden input
         importFileInput.addEventListener('change', importFromXLSX);
 
-        // Close modal if user clicks outside the modal content
+        // Close main modal if user clicks outside the modal content
         window.addEventListener('click', (event) => {
             if (event.target === linkModal) {
                 closeModal();
+            }
+            // Close delete confirm modal if user clicks outside its content
+            if (event.target === confirmDeleteModal) {
+                closeDeleteConfirmModal();
             }
         });
 
