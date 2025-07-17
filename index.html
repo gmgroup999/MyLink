@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome for icons (optional, but good for edit icon) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- SheetJS (xlsx) for Excel export -->
+    <!-- SheetJS (xlsx) for Excel export/import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body {
@@ -102,7 +102,7 @@
     <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl text-center">
         <!-- Profile Section -->
         <div class="mb-8">
-            <img src="https://placehold.co/120x120/a78bfa/ffffff?text=Profile" alt="รูปโปรไฟล์" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-purple-400 shadow-md">
+            <img src="https://placehold.co/120x120/a78bfa/ffffff?text=Profile" alt="Profile Picture" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-purple-400 shadow-md">
             <h1 class="text-4xl font-extrabold text-gray-800 mb-2">((ZURAPONX))</h1>
             <p class="text-lg text-gray-600">รวบรวมลิงค์</p>
         </div>
@@ -120,6 +120,10 @@
             <button id="export-button" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
                 <i class="fas fa-file-excel mr-2"></i>Export เป็น Excel
             </button>
+            <button id="import-button" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-300 ease-in-out">
+                <i class="fas fa-file-import mr-2"></i>Import จาก Excel
+            </button>
+            <input type="file" id="import-file-input" accept=".xlsx, .xls" class="hidden">
         </div>
     </div>
 
@@ -144,6 +148,8 @@
         const linksContainer = document.getElementById('links-container');
         const addLinkButton = document.getElementById('add-link-button');
         const exportButton = document.getElementById('export-button');
+        const importButton = document.getElementById('import-button'); // Get the new import button
+        const importFileInput = document.getElementById('import-file-input'); // Get the hidden file input
         const linkModal = document.getElementById('link-modal');
         const modalTitle = document.getElementById('modal-title');
         const linkTitleInput = document.getElementById('link-title');
@@ -354,11 +360,67 @@
             showMessage('Export ข้อมูลเป็น Excel แล้ว!', 'success');
         }
 
+        // Function to import data from XLSX
+        function importFromXLSX(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Assuming the first sheet contains the link data
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convert sheet to JSON
+                    const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+                    // Map imported data to our links array format
+                    const newLinks = importedData.map(row => ({
+                        title: row['ชื่อลิงค์'] || '', // Use the column header from export
+                        url: row['URL'] || '',
+                        icon: "fas fa-link" // Default icon for imported links
+                    })).filter(link => link.title && link.url); // Filter out rows without title or URL
+
+                    if (newLinks.length > 0) {
+                        links = newLinks; // Replace current links with imported ones
+                        renderLinks();
+                        saveLinksToLocalStorage();
+                        showMessage('นำเข้าข้อมูลจาก Excel สำเร็จ!', 'success');
+                    } else {
+                        showMessage('ไม่พบข้อมูลลิงค์ที่ถูกต้องในไฟล์ Excel', 'warning');
+                    }
+
+                } catch (error) {
+                    console.error("Error importing XLSX:", error);
+                    showMessage('เกิดข้อผิดพลาดในการนำเข้าไฟล์ Excel', 'error');
+                } finally {
+                    // Clear the file input to allow re-importing the same file
+                    event.target.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+
         // Event listener for the "Add Link" button
-        addLinkButton.addEventListener('click', () => openModal(-1)); // Call openModal with -1 for add mode
+        addLinkButton.addEventListener('click', () => openModal(-1));
 
         // Event listener for the "Export" button
         exportButton.addEventListener('click', exportToXLSX);
+
+        // Event listener for the "Import" button (triggers hidden file input)
+        importButton.addEventListener('click', () => {
+            importFileInput.click(); // Programmatically click the hidden file input
+        });
+
+        // Event listener for when a file is selected in the hidden input
+        importFileInput.addEventListener('change', importFromXLSX);
 
         // Close modal if user clicks outside the modal content
         window.addEventListener('click', (event) => {
